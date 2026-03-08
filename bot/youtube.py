@@ -113,6 +113,15 @@ class YouTubeClient:
                     log.warning("Video %s not found (404), marking as permanent failure", video_id)
                     return "not_found"
 
+                if resp.status == 403:
+                    resp_body = await resp.text()
+                    if "quotaExceeded" in resp_body:
+                        log.warning("YouTube quota exceeded (403), marking exhausted")
+                        self.api_calls_today = DAILY_QUOTA_LIMIT // QUOTA_COST_PER_INSERT
+                        return "quota_exceeded"
+                    log.error("Playlist insert forbidden (403): %s", resp_body)
+                    return None
+
                 if resp.status == 429:
                     wait = (2 ** attempt) * 2
                     log.warning("Rate limited (429), backing off %ds", wait)

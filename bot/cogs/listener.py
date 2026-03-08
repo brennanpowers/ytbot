@@ -43,9 +43,10 @@ class LinkListener(commands.Cog):
             url = f"https://youtube.com/watch?v={vid}"
             result = await self.yt.add_to_playlist(vid)
 
+            sentinel = ("not_found", "quota_exceeded")
             is_not_found = result == "not_found"
-            added_at = now if (result and not is_not_found) else None
-            playlist_item_id = result if (result and result not in ("not_found",)) else None
+            added_at = now if (result and result not in sentinel) else None
+            playlist_item_id = result if (result and result not in sentinel) else None
 
             await db.add_video(
                 video_id=vid,
@@ -83,6 +84,9 @@ class LinkListener(commands.Cog):
                 log.warning("Quota exhausted during retry, stopping")
                 break
             result = await self.yt.add_to_playlist(video["video_id"])
+            if result == "quota_exceeded":
+                log.warning("Quota exhausted during retry, stopping")
+                break
             if result == "not_found":
                 await db.mark_permanent_failure(video["video_id"])
                 log.info("Marked %s as permanent failure (not found)", video["video_id"])
