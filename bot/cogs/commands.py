@@ -115,8 +115,17 @@ class Commands(commands.Cog):
                     url = f"https://youtube.com/watch?v={vid}"
                     result = await self.yt.add_to_playlist(vid)
 
+                    if result == "quota_exceeded":
+                        await db.update_scan_progress(last_msg_id, scanned, added, status="paused")
+                        await progress_msg.edit(
+                            content=f"Scan paused — YouTube quota exhausted. "
+                                    f"Scanned {scanned} messages, added {added} videos. "
+                                    f"Will auto-resume when quota resets."
+                        )
+                        return
+
                     is_not_found = result == "not_found"
-                    added_at = now if (result and not is_not_found) else None
+                    added_at = now if (result and result not in ("not_found",)) else None
                     playlist_item_id = result if (result and result not in ("not_found",)) else None
 
                     await db.add_video(
