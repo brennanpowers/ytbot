@@ -1,0 +1,10 @@
+services:
+  ytbot:
+    build: .
+    env_file: .env
+    volumes:
+      - ytbot-data:/data
+    restart: unless-stopped
+
+volumes:
+  ytbot-data:
