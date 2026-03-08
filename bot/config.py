@@ -6,8 +6,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def _clean(value: str | None) -> str | None:
+    if value is None:
+        return None
+    return value.split("#")[0].strip() or None
+
+
 def _require(name: str) -> str:
-    value = os.getenv(name)
+    value = _clean(os.getenv(name))
     if not value:
         print(f"Missing required environment variable: {name}", file=sys.stderr)
         sys.exit(1)
@@ -22,8 +28,8 @@ YOUTUBE_CLIENT_SECRET: str = _require("YOUTUBE_CLIENT_SECRET")
 YOUTUBE_REFRESH_TOKEN: str = _require("YOUTUBE_REFRESH_TOKEN")
 
 DISCORD_ADMIN_USER_ID: int | None = (
-    int(v) if (v := os.getenv("DISCORD_ADMIN_USER_ID")) else None
+    int(v) if (v := _clean(os.getenv("DISCORD_ADMIN_USER_ID"))) else None
 )
-DB_PATH: str = os.getenv("DB_PATH", "/data/ytbot.db")
-LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
-COMMAND_PREFIX: str = os.getenv("COMMAND_PREFIX", "!")
+DB_PATH: str = _clean(os.getenv("DB_PATH")) or "/data/ytbot.db"
+LOG_LEVEL: str = _clean(os.getenv("LOG_LEVEL")) or "INFO"
+COMMAND_PREFIX: str = _clean(os.getenv("COMMAND_PREFIX")) or "!"
