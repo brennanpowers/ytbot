@@ -51,7 +51,10 @@ class Commands(commands.Cog):
             await ctx.send("Invalid date format. Use YYYY-MM-DD.")
             return
 
-        after = datetime.datetime.combine(scan_date, datetime.time.min, tzinfo=datetime.timezone.utc)
+        # Discord snowflake epoch is 2015-01-01; clamp to that minimum
+        discord_epoch = datetime.date(2015, 1, 1)
+        effective_date = max(scan_date, discord_epoch)
+        after = datetime.datetime.combine(effective_date, datetime.time.min, tzinfo=datetime.timezone.utc)
         now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
 
         await db.save_scan_state(
