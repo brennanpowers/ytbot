@@ -8,9 +8,11 @@ Usage:
 """
 
 import http.server
+import json
 import os
 import threading
 import urllib.parse
+import urllib.request
 import webbrowser
 
 from dotenv import load_dotenv
@@ -70,9 +72,6 @@ def main() -> None:
     if not auth_code:
         print("ERROR: No authorization code received.")
         return
-
-    import urllib.request
-    import json
 
     token_data = urllib.parse.urlencode({
         "code": auth_code,
