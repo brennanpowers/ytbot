@@ -102,7 +102,7 @@ async def get_failed_videos() -> list[dict]:
     return [dict(r) for r in rows]
 
 
-async def get_stats() -> dict:
+async def get_stats(recent_limit: int = 5) -> dict:
     db = get_db()
     total = (await db.execute_fetchall("SELECT COUNT(*) as c FROM videos"))[0]["c"]
     added = (await db.execute_fetchall(
@@ -114,7 +114,8 @@ async def get_stats() -> dict:
     ))[0]["c"]
     recent = await db.execute_fetchall(
         "SELECT video_id, youtube_url, posted_in_discord_at FROM videos "
-        "ORDER BY created_at DESC LIMIT 5"
+        "ORDER BY created_at DESC LIMIT ?",
+        (recent_limit,),
     )
     return {
         "total": total,
