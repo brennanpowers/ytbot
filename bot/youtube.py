@@ -53,6 +53,11 @@ class YouTubeClient:
         midnight = now_pacific.replace(hour=0, minute=0, second=0, microsecond=0) + datetime.timedelta(days=1)
         self._quota_reset_time = midnight.timestamp()
 
+    def _set_quota_cooldown(self) -> None:
+        import datetime
+        self._quota_reset_time = time.time() + datetime.timedelta(hours=48).total_seconds()
+        log.warning("Quota cooldown set for 48 hours from now")
+
     async def _refresh_access_token(self) -> None:
         assert self._session is not None
         async with self._session.post(TOKEN_URL, data={
@@ -135,7 +140,7 @@ class YouTubeClient:
                     log.error("YouTube 403 response: %s", resp_body)
                     if "quotaExceeded" in resp_body:
                         self.api_calls_today = DAILY_QUOTA_LIMIT // QUOTA_COST_PER_INSERT
-                        self._reset_quota_timer()
+                        self._set_quota_cooldown()
                         return "quota_exceeded"
                     log.error("Playlist insert forbidden (403): %s", resp_body)
                     return None

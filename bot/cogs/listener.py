@@ -70,10 +70,18 @@ class LinkListener(commands.Cog):
             except discord.HTTPException:
                 pass
 
-    @tasks.loop(minutes=30)
+    @tasks.loop(hours=6)
     async def retry_failed(self) -> None:
         failed = await db.get_failed_videos()
         if not failed:
+            return
+
+        if not self.yt.quota_available():
+            return
+
+        available, msg = await self.yt.check_quota()
+        if not available:
+            log.info("Retry check: %s", msg)
             return
 
         log.info("Retrying %d failed videos", len(failed))

@@ -160,7 +160,7 @@ class Commands(commands.Cog):
         finally:
             self._scanning = False
 
-    @tasks.loop(hours=1)
+    @tasks.loop(hours=6)
     async def auto_resume_scan(self) -> None:
         if self._scanning:
             return
@@ -172,12 +172,17 @@ class Commands(commands.Cog):
         if not self.yt.quota_available():
             return
 
+        available, msg = await self.yt.check_quota()
+        if not available:
+            log.info("Auto-resume check: %s", msg)
+            return
+
         channel = self.bot.get_channel(state["channel_id"])
         if not channel:
             return
 
-        log.info("Auto-resuming paused scan")
-        await channel.send("Resuming scan (quota available again)...")
+        log.info("Auto-resuming paused scan (quota verified with API)")
+        await channel.send("Resuming scan (quota verified available)...")
 
         after = datetime.datetime.combine(
             datetime.date.fromisoformat(state["scan_from"]),
