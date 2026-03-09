@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 
@@ -35,7 +36,7 @@ class LinkListener(commands.Cog):
         for vid in video_ids:
             if await db.video_exists(vid):
                 try:
-                    await message.add_reaction("\U0001f501")  # 🔁
+                    await message.add_reaction(config.REACTION_DUPLICATE)
                 except discord.HTTPException:
                     pass
                 continue
@@ -62,15 +63,15 @@ class LinkListener(commands.Cog):
 
             try:
                 if is_not_found:
-                    await message.add_reaction("\u274c")  # ❌
+                    await message.add_reaction(config.REACTION_NOT_FOUND)
                 elif result:
-                    await message.add_reaction("\u2705")  # ✅
+                    await message.add_reaction(config.REACTION_ADDED)
                 else:
-                    await message.add_reaction("\u26a0\ufe0f")  # ⚠️
+                    await message.add_reaction(config.REACTION_WARNING)
             except discord.HTTPException:
                 pass
 
-    @tasks.loop(hours=6)
+    @tasks.loop(hours=config.RETRY_INTERVAL_HOURS)
     async def retry_failed(self) -> None:
         failed = await db.get_failed_videos()
         if not failed:
@@ -85,7 +86,6 @@ class LinkListener(commands.Cog):
             return
 
         log.info("Retrying %d failed videos", len(failed))
-        import asyncio
         now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
         for video in failed:
             if not self.yt.quota_available():
@@ -101,7 +101,7 @@ class LinkListener(commands.Cog):
             elif result:
                 await db.mark_video_added(video["video_id"], now, result)
                 log.info("Retry succeeded for %s", video["video_id"])
-            await asyncio.sleep(1)
+            await asyncio.sleep(config.RETRY_THROTTLE_SECONDS)
 
     @retry_failed.before_loop
     async def before_retry(self) -> None:

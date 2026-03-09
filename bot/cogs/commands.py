@@ -51,7 +51,6 @@ class Commands(commands.Cog):
             await ctx.send("Invalid date format. Use YYYY-MM-DD.")
             return
 
-        # Discord snowflake epoch is 2015-01-01; clamp to that minimum
         discord_epoch = datetime.date(2015, 1, 1)
         effective_date = max(scan_date, discord_epoch)
         after = datetime.datetime.combine(effective_date, datetime.time.min, tzinfo=datetime.timezone.utc)
@@ -141,16 +140,16 @@ class Commands(commands.Cog):
                         await db.mark_permanent_failure(vid)
                     elif result:
                         added += 1
-                    await asyncio.sleep(1.5)
+                    await asyncio.sleep(config.SCAN_THROTTLE_SECONDS)
 
-                if scanned % 100 == 0:
+                if scanned % config.SCAN_PROGRESS_INTERVAL == 0:
                     await db.update_scan_progress(last_msg_id, scanned, added)
                     await progress_msg.edit(
                         content=f"Scanned {scanned} messages, added {added} videos so far..."
                     )
 
-                if scanned % 500 == 0:
-                    await asyncio.sleep(0.5)
+                if scanned % config.SCAN_PAGE_COOLDOWN_INTERVAL == 0:
+                    await asyncio.sleep(config.SCAN_PAGE_COOLDOWN_SECONDS)
 
             await db.update_scan_progress(last_msg_id or 0, scanned, added, status="completed")
             await db.clear_scan_state()
@@ -160,7 +159,7 @@ class Commands(commands.Cog):
         finally:
             self._scanning = False
 
-    @tasks.loop(hours=6)
+    @tasks.loop(hours=config.SCAN_RESUME_INTERVAL_HOURS)
     async def auto_resume_scan(self) -> None:
         if self._scanning:
             return
@@ -208,7 +207,7 @@ class Commands(commands.Cog):
 
     @commands.command()
     async def stats(self, ctx: commands.Context) -> None:
-        s = await db.get_stats()
+        s = await db.get_stats(recent_limit=config.STATS_RECENT_VIDEOS_LIMIT)
         lines = [
             f"**Videos tracked:** {s['total']}",
             f"**Added to playlist:** {s['added']}",

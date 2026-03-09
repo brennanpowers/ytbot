@@ -1,0 +1,29 @@
+[quota]
+daily_limit = 10_000
+cost_per_insert = 50
+cooldown_hours = 48
+
+[scan]
+throttle_seconds = 1.5
+progress_interval = 100
+page_cooldown_interval = 500
+page_cooldown_seconds = 0.5
+resume_interval_hours = 6
+
+[retry]
+interval_hours = 6
+throttle_seconds = 1.0
+max_attempts = 4
+backoff_base = 2
+backoff_multiplier = 2
+
+[stats]
+recent_videos_limit = 5
+
+[reactions]
+added = "\u2705"
+duplicate = "\U0001f501"
+warning = "\u26a0\ufe0f"
+not_found = "\u274c"
+quota_check_ok = "\u2705"
+quota_check_fail = "\u274c"

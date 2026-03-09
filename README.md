@@ -43,6 +43,24 @@ pip install -r requirements.txt
 DB_PATH=./ytbot.db python -m bot.main
 ```
 
+## Configuration
+
+Non-secret settings live in `config.toml` (committed with defaults). To override without modifying the defaults, create `config.local.toml` with only the values you want to change:
+
+```toml
+# config.local.toml — only include what you want to override
+[quota]
+cooldown_hours = 24
+
+[scan]
+throttle_seconds = 2.0
+
+[reactions]
+added = "\U0001f389"
+```
+
+The local file is gitignored and deep-merged over the defaults.
+
 ## Commands
 
 | Command | Description |
@@ -53,6 +71,7 @@ DB_PATH=./ytbot.db python -m bot.main
 | `!stats` | Show video counts and recent additions |
 | `!status` | (Admin) Bot uptime, quota usage, scan state |
 | `!retry` | (Admin) Retry failed playlist additions |
+| `!quota` | (Admin) Check YouTube API quota with a live API call |
 
 ## Reactions
 

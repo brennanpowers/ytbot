@@ -38,7 +38,7 @@ class Admin(commands.Cog):
             f"**Videos tracked:** {s['total']}",
             f"**Added to playlist:** {s['added']}",
             f"**Failed/pending:** {s['failed']}",
-            f"**Estimated quota used:** {self.yt.estimated_quota_used}/{10_000}",
+            f"**Estimated quota used:** {self.yt.estimated_quota_used}/{config.QUOTA_DAILY_LIMIT}",
             f"**Remaining inserts:** {self.yt.remaining_inserts}",
         ]
 
@@ -53,7 +53,7 @@ class Admin(commands.Cog):
     @is_admin()
     async def quota(self, ctx: commands.Context) -> None:
         available, message = await self.yt.check_quota()
-        emoji = "\u2705" if available else "\u274c"
+        emoji = config.REACTION_QUOTA_OK if available else config.REACTION_QUOTA_FAIL
         await ctx.send(f"{emoji} {message}")
 
     @commands.command()
@@ -69,7 +69,6 @@ class Admin(commands.Cog):
         succeeded = 0
         skipped = 0
         now = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S")
-
         for video in failed:
             if not self.yt.quota_available():
                 await ctx.send(f"Quota exhausted. Retried {succeeded}/{len(failed)} successfully, {skipped} failed.")
@@ -83,7 +82,7 @@ class Admin(commands.Cog):
                 succeeded += 1
             else:
                 skipped += 1
-            await asyncio.sleep(1)
+            await asyncio.sleep(config.RETRY_THROTTLE_SECONDS)
 
         await ctx.send(f"Retry complete. {succeeded} succeeded, {skipped} failed.")
 

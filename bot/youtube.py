@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import logging
 import time
 
@@ -10,8 +11,7 @@ log = logging.getLogger(__name__)
 
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 PLAYLIST_INSERT_URL = "https://www.googleapis.com/youtube/v3/playlistItems"
-QUOTA_COST_PER_INSERT = 50
-DAILY_QUOTA_LIMIT = 10_000
+PLAYLIST_LIST_URL = "https://www.googleapis.com/youtube/v3/playlists"
 
 
 class YouTubeClient:
@@ -24,11 +24,11 @@ class YouTubeClient:
 
     @property
     def estimated_quota_used(self) -> int:
-        return self.api_calls_today * QUOTA_COST_PER_INSERT
+        return self.api_calls_today * config.QUOTA_COST_PER_INSERT
 
     @property
     def remaining_inserts(self) -> int:
-        return max(0, (DAILY_QUOTA_LIMIT - self.estimated_quota_used) // QUOTA_COST_PER_INSERT)
+        return max(0, (config.QUOTA_DAILY_LIMIT - self.estimated_quota_used) // config.QUOTA_COST_PER_INSERT)
 
     def quota_available(self) -> bool:
         if time.time() > self._quota_reset_time:
@@ -46,7 +46,6 @@ class YouTubeClient:
             self._session = None
 
     def _reset_quota_timer(self) -> None:
-        import datetime
         now = datetime.datetime.now(datetime.timezone.utc)
         pacific = datetime.timezone(datetime.timedelta(hours=-8))
         now_pacific = now.astimezone(pacific)
@@ -54,9 +53,8 @@ class YouTubeClient:
         self._quota_reset_time = midnight.timestamp()
 
     def _set_quota_cooldown(self) -> None:
-        import datetime
-        self._quota_reset_time = time.time() + datetime.timedelta(hours=48).total_seconds()
-        log.warning("Quota cooldown set for 48 hours from now")
+        self._quota_reset_time = time.time() + datetime.timedelta(hours=config.QUOTA_COOLDOWN_HOURS).total_seconds()
+        log.warning("Quota cooldown set for %d hours from now", config.QUOTA_COOLDOWN_HOURS)
 
     async def _refresh_access_token(self) -> None:
         assert self._session is not None
@@ -82,7 +80,7 @@ class YouTubeClient:
         assert self._session is not None
         await self._ensure_valid_token()
         async with self._session.get(
-            "https://www.googleapis.com/youtube/v3/playlists",
+            PLAYLIST_LIST_URL,
             params={"part": "id", "id": config.YOUTUBE_PLAYLIST_ID, "maxResults": "1"},
             headers={"Authorization": f"Bearer {self._access_token}"},
         ) as resp:
@@ -112,7 +110,7 @@ class YouTubeClient:
             }
         }
 
-        for attempt in range(4):
+        for attempt in range(config.RETRY_MAX_ATTEMPTS):
             async with self._session.post(
                 PLAYLIST_INSERT_URL,
                 params={"part": "snippet"},
@@ -139,14 +137,14 @@ class YouTubeClient:
                     resp_body = await resp.text()
                     log.error("YouTube 403 response: %s", resp_body)
                     if "quotaExceeded" in resp_body:
-                        self.api_calls_today = DAILY_QUOTA_LIMIT // QUOTA_COST_PER_INSERT
+                        self.api_calls_today = config.QUOTA_DAILY_LIMIT // config.QUOTA_COST_PER_INSERT
                         self._set_quota_cooldown()
                         return "quota_exceeded"
                     log.error("Playlist insert forbidden (403): %s", resp_body)
                     return None
 
                 if resp.status == 429:
-                    wait = (2 ** attempt) * 2
+                    wait = (config.RETRY_BACKOFF_BASE ** attempt) * config.RETRY_BACKOFF_MULTIPLIER
                     log.warning("Rate limited (429), backing off %ds", wait)
                     await asyncio.sleep(wait)
                     continue
