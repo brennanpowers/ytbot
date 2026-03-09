@@ -68,19 +68,30 @@ class Admin(commands.Cog):
             return
 
         total_pages = (total + per_page - 1) // per_page
-        lines = [f"**Pending errors** — page {page}/{total_pages} ({total} total)\n"]
+        header = f"**Pending errors** — page {page}/{total_pages} ({total} total)\n\n"
+        messages = [header]
+
         for v in videos:
             error = v["error_detail"] or "No error recorded"
-            lines.append(
+            entry = (
                 f"**`{v['video_id']}`** — {v['youtube_url']}\n"
                 f"  Added: {v['created_at']}\n"
-                f"  Error: {error}\n"
+                f"  Error: {error}\n\n"
             )
+            if len(messages[-1]) + len(entry) > 1900:
+                messages.append(entry)
+            else:
+                messages[-1] += entry
 
         if page < total_pages:
-            lines.append(f"*Use `{config.COMMAND_PREFIX}errors {page + 1}` for the next page.*")
+            footer = f"*Use `{config.COMMAND_PREFIX}errors {page + 1}` for the next page.*"
+            if len(messages[-1]) + len(footer) > 1900:
+                messages.append(footer)
+            else:
+                messages[-1] += footer
 
-        await ctx.send("\n".join(lines))
+        for msg in messages:
+            await ctx.send(msg)
 
     @commands.command()
     @is_admin()
