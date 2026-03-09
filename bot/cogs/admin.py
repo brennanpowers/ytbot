@@ -58,6 +58,32 @@ class Admin(commands.Cog):
 
     @commands.command()
     @is_admin()
+    async def errors(self, ctx: commands.Context, page: int = 1) -> None:
+        per_page = 10
+        offset = (max(1, page) - 1) * per_page
+        videos, total = await db.get_retryable_errors(limit=per_page, offset=offset)
+
+        if total == 0:
+            await ctx.send("No pending errors.")
+            return
+
+        total_pages = (total + per_page - 1) // per_page
+        lines = [f"**Pending errors** — page {page}/{total_pages} ({total} total)\n"]
+        for v in videos:
+            error = v["error_detail"] or "No error recorded"
+            lines.append(
+                f"**`{v['video_id']}`** — {v['youtube_url']}\n"
+                f"  Added: {v['created_at']}\n"
+                f"  Error: {error}\n"
+            )
+
+        if page < total_pages:
+            lines.append(f"*Use `{config.COMMAND_PREFIX}errors {page + 1}` for the next page.*")
+
+        await ctx.send("\n".join(lines))
+
+    @commands.command()
+    @is_admin()
     async def retry(self, ctx: commands.Context) -> None:
         failed = await db.get_failed_videos()
         if not failed:

@@ -57,6 +57,7 @@ class LinkListener(commands.Cog):
                 posted_in_discord_at=posted_at,
                 added_to_playlist_at=added_at,
                 playlist_item_id=playlist_item_id,
+                error_detail=self.yt.last_error,
             )
             if is_not_found:
                 await db.mark_permanent_failure(vid)
@@ -110,14 +111,19 @@ class LinkListener(commands.Cog):
                 break
             result = await self.yt.add_to_playlist(video["video_id"])
             if result == "quota_exceeded":
+                await db.update_error_detail(video["video_id"], self.yt.last_error)
                 log.warning("Quota exhausted during retry, stopping")
                 break
             if result == "not_found":
+                await db.update_error_detail(video["video_id"], self.yt.last_error)
                 await db.mark_permanent_failure(video["video_id"])
                 log.info("Marked %s as permanent failure (not found)", video["video_id"])
             elif result:
+                await db.update_error_detail(video["video_id"], None)
                 await db.mark_video_added(video["video_id"], now, result)
                 log.info("Retry succeeded for %s", video["video_id"])
+            else:
+                await db.update_error_detail(video["video_id"], self.yt.last_error)
             await asyncio.sleep(config.RETRY_THROTTLE_SECONDS)
 
     @retry_failed.before_loop

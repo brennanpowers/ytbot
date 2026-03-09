@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS videos (
     posted_in_discord_at TEXT NOT NULL,
     playlist_item_id     TEXT,
     permanent_failure    INTEGER NOT NULL DEFAULT 0,
+    error_detail         TEXT,
     created_at           TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%S', 'now'))
 );
 
@@ -36,7 +37,15 @@ async def init_db(db_path: str) -> None:
     _db = await aiosqlite.connect(db_path)
     _db.row_factory = aiosqlite.Row
     await _db.executescript(_SCHEMA)
+    await _migrate(_db)
     await _db.commit()
+
+
+async def _migrate(db: aiosqlite.Connection) -> None:
+    columns = await db.execute_fetchall("PRAGMA table_info(videos)")
+    col_names = {row["name"] for row in columns}
+    if "error_detail" not in col_names:
+        await db.execute("ALTER TABLE videos ADD COLUMN error_detail TEXT")
 
 
 async def close_db() -> None:
@@ -66,14 +75,23 @@ async def add_video(
     posted_in_discord_at: str,
     added_to_playlist_at: str | None = None,
     playlist_item_id: str | None = None,
+    error_detail: str | None = None,
 ) -> None:
     await get_db().execute(
         """INSERT OR IGNORE INTO videos
            (video_id, youtube_url, discord_message_id, discord_user_id,
-            posted_in_discord_at, added_to_playlist_at, playlist_item_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?)""",
+            posted_in_discord_at, added_to_playlist_at, playlist_item_id, error_detail)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
         (video_id, youtube_url, discord_message_id, discord_user_id,
-         posted_in_discord_at, added_to_playlist_at, playlist_item_id),
+         posted_in_discord_at, added_to_playlist_at, playlist_item_id, error_detail),
+    )
+    await get_db().commit()
+
+
+async def update_error_detail(video_id: str, error_detail: str | None) -> None:
+    await get_db().execute(
+        "UPDATE videos SET error_detail = ? WHERE video_id = ?",
+        (error_detail, video_id),
     )
     await get_db().commit()
 
@@ -92,6 +110,22 @@ async def mark_permanent_failure(video_id: str) -> None:
         "UPDATE videos SET permanent_failure = 1 WHERE video_id = ?", (video_id,)
     )
     await get_db().commit()
+
+
+async def get_retryable_errors(limit: int = 10, offset: int = 0) -> tuple[list[dict], int]:
+    db = get_db()
+    count_row = await db.execute_fetchall(
+        "SELECT COUNT(*) as c FROM videos "
+        "WHERE added_to_playlist_at IS NULL AND permanent_failure = 0"
+    )
+    total = count_row[0]["c"]
+    rows = await db.execute_fetchall(
+        "SELECT video_id, youtube_url, error_detail, created_at FROM videos "
+        "WHERE added_to_playlist_at IS NULL AND permanent_failure = 0 "
+        "ORDER BY created_at DESC LIMIT ? OFFSET ?",
+        (limit, offset),
+    )
+    return [dict(r) for r in rows], total
 
 
 async def get_failed_videos() -> list[dict]:
