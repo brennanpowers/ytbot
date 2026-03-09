@@ -21,6 +21,7 @@ class YouTubeClient:
         self._token_expiry: float = 0
         self.api_calls_today: int = 0
         self._quota_reset_time: float = 0
+        self.last_error: str | None = None
 
     @property
     def estimated_quota_used(self) -> int:
@@ -94,7 +95,10 @@ class YouTubeClient:
 
     async def add_to_playlist(self, video_id: str) -> str | None:
         assert self._session is not None
+        self.last_error = None
+
         if not self.quota_available():
+            self.last_error = "YouTube daily quota exhausted. Waiting for reset."
             log.warning("YouTube quota exhausted, skipping add for %s", video_id)
             return None
 
@@ -130,6 +134,7 @@ class YouTubeClient:
 
                 if resp.status == 404:
                     self.api_calls_today += 1
+                    self.last_error = f"HTTP 404 — YouTube says this video does not exist."
                     log.warning("Video %s not found (404), marking as permanent failure", video_id)
                     return "not_found"
 
@@ -137,9 +142,11 @@ class YouTubeClient:
                     resp_body = await resp.text()
                     log.error("YouTube 403 response: %s", resp_body)
                     if "quotaExceeded" in resp_body:
+                        self.last_error = "HTTP 403 — YouTube daily quota exceeded."
                         self.api_calls_today = config.QUOTA_DAILY_LIMIT // config.QUOTA_COST_PER_INSERT
                         self._set_quota_cooldown()
                         return "quota_exceeded"
+                    self.last_error = f"HTTP 403 — Access forbidden. Response: {resp_body[:200]}"
                     log.error("Playlist insert forbidden (403): %s", resp_body)
                     return None
 
@@ -150,8 +157,10 @@ class YouTubeClient:
                     continue
 
                 resp_body = await resp.text()
+                self.last_error = f"HTTP {resp.status} — {resp_body[:200]}"
                 log.error("Playlist insert failed (%d): %s", resp.status, resp_body)
                 return None
 
+        self.last_error = f"HTTP 429 — Rate limited. Exhausted {config.RETRY_MAX_ATTEMPTS} retries."
         log.error("Exhausted retries for playlist insert of %s", video_id)
         return None

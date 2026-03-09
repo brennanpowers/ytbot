@@ -64,10 +64,27 @@ class LinkListener(commands.Cog):
             try:
                 if is_not_found:
                     await message.add_reaction(config.REACTION_NOT_FOUND)
+                    error_detail = self.yt.last_error or "Unknown error"
+                    await message.reply(
+                        f"Couldn't add `{vid}` to the playlist — video not found on YouTube. "
+                        f"It may have been deleted or made private.\n"
+                        f"**Video ID:** `{vid}`\n"
+                        f"**URL:** {url}\n"
+                        f"**Error:** {error_detail}",
+                        mention_author=False,
+                    )
                 elif result:
                     await message.add_reaction(config.REACTION_ADDED)
                 else:
                     await message.add_reaction(config.REACTION_WARNING)
+                    error_detail = self.yt.last_error or "Unknown error"
+                    await message.reply(
+                        f"Couldn't add `{vid}` to the playlist right now. I'll keep trying automatically.\n"
+                        f"**Video ID:** `{vid}`\n"
+                        f"**URL:** {url}\n"
+                        f"**Error:** {error_detail}",
+                        mention_author=False,
+                    )
             except discord.HTTPException:
                 pass
 
