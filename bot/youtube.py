@@ -81,12 +81,13 @@ class YouTubeClient:
             params={"part": "id", "id": config.YOUTUBE_PLAYLIST_ID, "maxResults": "1"},
             headers={"Authorization": f"Bearer {self._access_token}"},
         ) as resp:
+            body = await resp.text()
+            log.info("Quota check response (%d): %s", resp.status, body)
             if resp.status == 200:
                 return True, "API responding, quota available"
-            body = await resp.text()
             if resp.status == 403 and "quotaExceeded" in body:
                 return False, "Quota still exhausted"
-            return False, f"Unexpected response ({resp.status})"
+            return False, f"Unexpected response ({resp.status}): {body}"
 
     async def add_to_playlist(self, video_id: str) -> str | None:
         assert self._session is not None
@@ -131,8 +132,8 @@ class YouTubeClient:
 
                 if resp.status == 403:
                     resp_body = await resp.text()
+                    log.error("YouTube 403 response: %s", resp_body)
                     if "quotaExceeded" in resp_body:
-                        log.warning("YouTube quota exceeded (403), marking exhausted")
                         self.api_calls_today = DAILY_QUOTA_LIMIT // QUOTA_COST_PER_INSERT
                         self._reset_quota_timer()
                         return "quota_exceeded"
