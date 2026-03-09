@@ -51,6 +51,13 @@ class Admin(commands.Cog):
 
     @commands.command()
     @is_admin()
+    async def quota(self, ctx: commands.Context) -> None:
+        available, message = await self.yt.check_quota()
+        emoji = "\u2705" if available else "\u274c"
+        await ctx.send(f"{emoji} {message}")
+
+    @commands.command()
+    @is_admin()
     async def retry(self, ctx: commands.Context) -> None:
         failed = await db.get_failed_videos()
         if not failed:

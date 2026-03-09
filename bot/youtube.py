@@ -73,6 +73,21 @@ class YouTubeClient:
         if not self._access_token or time.time() >= self._token_expiry:
             await self._refresh_access_token()
 
+    async def check_quota(self) -> tuple[bool, str]:
+        assert self._session is not None
+        await self._ensure_valid_token()
+        async with self._session.get(
+            "https://www.googleapis.com/youtube/v3/playlists",
+            params={"part": "id", "id": config.YOUTUBE_PLAYLIST_ID, "maxResults": "1"},
+            headers={"Authorization": f"Bearer {self._access_token}"},
+        ) as resp:
+            if resp.status == 200:
+                return True, "API responding, quota available"
+            body = await resp.text()
+            if resp.status == 403 and "quotaExceeded" in body:
+                return False, "Quota still exhausted"
+            return False, f"Unexpected response ({resp.status})"
+
     async def add_to_playlist(self, video_id: str) -> str | None:
         assert self._session is not None
         if not self.quota_available():
