@@ -33,6 +33,7 @@ class YouTubeClient:
     def quota_available(self) -> bool:
         if time.time() > self._quota_reset_time:
             self.api_calls_today = 0
+            self._reset_quota_timer()
         return self.remaining_inserts > 0
 
     async def initialize(self) -> None:
@@ -118,6 +119,7 @@ class YouTubeClient:
                     if "quotaExceeded" in resp_body:
                         log.warning("YouTube quota exceeded (403), marking exhausted")
                         self.api_calls_today = DAILY_QUOTA_LIMIT // QUOTA_COST_PER_INSERT
+                        self._reset_quota_timer()
                         return "quota_exceeded"
                     log.error("Playlist insert forbidden (403): %s", resp_body)
                     return None
