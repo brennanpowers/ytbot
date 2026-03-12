@@ -1,6 +1,7 @@
 services:
   ytbot:
     build: .
+    container_name: ytbot
     env_file: .env
     volumes:
       - ytbot-data:/data
