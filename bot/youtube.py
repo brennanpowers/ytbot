@@ -138,6 +138,17 @@ class YouTubeClient:
                     log.warning("Video %s not found (404), marking as permanent failure", video_id)
                     return "not_found"
 
+                if resp.status == 400:
+                    resp_body = await resp.text()
+                    self.api_calls_today += 1
+                    if "Precondition check failed" in resp_body:
+                        self.last_error = f"HTTP 400 — Precondition check failed. Video is likely private or unavailable."
+                        log.warning("Video %s failed precondition (400), marking as permanent failure", video_id)
+                        return "not_found"
+                    self.last_error = f"HTTP 400 — {resp_body[:200]}"
+                    log.error("Playlist insert bad request (400): %s", resp_body)
+                    return None
+
                 if resp.status == 403:
                     resp_body = await resp.text()
                     log.error("YouTube 403 response: %s", resp_body)
