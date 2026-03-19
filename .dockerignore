@@ -1,0 +1,7 @@
+.env
+config.local.toml
+*.db
+.git
+.idea
+__pycache__
+.venv
