@@ -21,6 +21,20 @@ docker compose up -d
 
 Requires `.env` file (copy from `.env.example`) with Discord bot token, channel ID, YouTube OAuth credentials, and playlist ID. Non-secret tunables live in `config.toml` with optional `config.local.toml` overrides (gitignored).
 
+## YouTube OAuth Token Refresh
+
+If the bot's refresh token expires or is revoked (`invalid_grant` error), re-run the auth script locally to obtain a new one:
+
+```bash
+# Python version (opens browser, handles callback automatically)
+python scripts/get_refresh_token.py
+
+# Shell version (manual: copy/paste redirect URL)
+bash scripts/get_refresh_token.sh
+```
+
+Both require `YOUTUBE_CLIENT_ID` and `YOUTUBE_CLIENT_SECRET` in `.env`. The script outputs a new `YOUTUBE_REFRESH_TOKEN` to add to `.env`. After updating, restart the bot.
+
 ## No Tests / No Linting
 
 There are no unit tests, linters, or formatters configured.

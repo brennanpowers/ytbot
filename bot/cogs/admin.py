@@ -58,7 +58,13 @@ class Admin(commands.Cog):
 
     @commands.command()
     @is_admin()
-    async def errors(self, ctx: commands.Context, page: int = 1) -> None:
+    async def errors(self, ctx: commands.Context, arg: str = "1") -> None:
+        if arg == "clear":
+            count = await db.clear_all_pending_errors()
+            await ctx.send(f"Cleared {count} pending error(s). They will no longer be retried.")
+            return
+
+        page = int(arg) if arg.isdigit() else 1
         per_page = 10
         offset = (max(1, page) - 1) * per_page
         videos, total = await db.get_retryable_errors(limit=per_page, offset=offset)

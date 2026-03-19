@@ -128,6 +128,16 @@ async def get_retryable_errors(limit: int = 10, offset: int = 0) -> tuple[list[d
     return [dict(r) for r in rows], total
 
 
+async def clear_all_pending_errors() -> int:
+    db = get_db()
+    cursor = await db.execute(
+        "UPDATE videos SET permanent_failure = 1 "
+        "WHERE added_to_playlist_at IS NULL AND permanent_failure = 0"
+    )
+    await db.commit()
+    return cursor.rowcount
+
+
 async def get_failed_videos() -> list[dict]:
     rows = await get_db().execute_fetchall(
         "SELECT video_id, youtube_url FROM videos "
