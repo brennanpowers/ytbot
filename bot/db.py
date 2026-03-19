@@ -170,6 +170,13 @@ async def get_stats(recent_limit: int = 5) -> dict:
     }
 
 
+async def get_latest_discord_message_id() -> int | None:
+    rows = await get_db().execute_fetchall(
+        "SELECT MAX(discord_message_id) as mid FROM videos"
+    )
+    return rows[0]["mid"] if rows and rows[0]["mid"] else None
+
+
 async def get_scan_state() -> dict | None:
     rows = await get_db().execute_fetchall("SELECT * FROM scan_state WHERE id = 1")
     return dict(rows[0]) if rows else None
