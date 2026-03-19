@@ -79,7 +79,10 @@ class YouTubeClient:
 
     async def check_quota(self) -> tuple[bool, str]:
         assert self._session is not None
-        await self._ensure_valid_token()
+        try:
+            await self._ensure_valid_token()
+        except RuntimeError as e:
+            return False, str(e)
         async with self._session.get(
             PLAYLIST_LIST_URL,
             params={"part": "id", "id": config.YOUTUBE_PLAYLIST_ID, "maxResults": "1"},
@@ -102,7 +105,11 @@ class YouTubeClient:
             log.warning("YouTube quota exhausted, skipping add for %s", video_id)
             return None
 
-        await self._ensure_valid_token()
+        try:
+            await self._ensure_valid_token()
+        except RuntimeError as e:
+            self.last_error = str(e)
+            return None
 
         body = {
             "snippet": {

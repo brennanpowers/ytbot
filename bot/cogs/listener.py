@@ -73,6 +73,10 @@ class LinkListener(commands.Cog):
                     log.warning("Startup scan: quota exhausted after %d messages, %d added", scanned, added)
                     return
 
+                if result is None and self.yt.last_error and "OAuth" in self.yt.last_error:
+                    log.error("Startup scan: auth failure, aborting — %s", self.yt.last_error)
+                    return
+
                 is_not_found = result == "not_found"
                 sentinel = ("not_found", "quota_exceeded")
                 added_at = now if (result and result not in sentinel) else None
