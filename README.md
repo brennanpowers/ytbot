@@ -72,6 +72,12 @@ The local file is gitignored and deep-merged over the defaults.
 | `!status` | (Admin) Bot uptime, quota usage, scan state |
 | `!retry` | (Admin) Retry failed playlist additions |
 | `!quota` | (Admin) Check YouTube API quota with a live API call |
+| `!errors [page]` | (Admin) View pending errors with pagination |
+| `!errors clear` | (Admin) Mark all pending errors as permanent (stop retrying) |
+
+## Startup Behavior
+
+On startup, the bot automatically scans for any messages posted since the last tracked video and silently adds new YouTube links to the playlist. Failed additions are retried periodically in the background.
 
 ## Reactions
 
